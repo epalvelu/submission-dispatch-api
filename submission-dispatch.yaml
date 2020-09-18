@@ -1,0 +1,291 @@
+openapi: 3.0.0
+info:
+  title: Submission Dispatch API
+  description: >
+    API for dispatching digital documents submitted via an e-business frontend service to target systems
+    and processes.
+
+    This API is implemented by a system that wishes to receive digital documents submitted via an external
+    e-business frontend service. The receiving service may store the documents and submission metadata
+    into a target system or initiate a business process to further handle the document.
+  version: 1.0.0
+  contact:
+    name: ePalvelu / Eventizer Oy
+    email: info@epalvelu.fi
+    url: 'https://www.epalvelu.fi'
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+
+servers:
+  - url: /submission-dispatch
+
+security:
+  - ApiKey: []
+
+paths:
+  /submissions:
+    post:
+      summary: Store or send information of a document submission to target system.
+      description: This operation stores or sends the data of a document submission into a target system.
+        Request body contains the target identification data, submission metadata and one or more document files.
+      operationId: dispatchSubmission
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                message:
+                  $ref: '#/components/schemas/SubmissionDispatch'
+                files:
+                  description: Submitted document or documents. The number of files and file names specified in
+                    `Content-Disposition` header must match the `contents` array in submission metadata.
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+            encoding:
+              submission:
+                contentType: application/json
+              files:
+                contentType: '*/*'
+      responses:
+        '200':
+          description: OK. Submission data was successfully stored or sent to the target system.
+            This status implies that caller should consider the dispatch process finished.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionDispatchState'
+        '202':
+          description: Accepted. Submission data was received successfully and will be stored
+            or sent to the target system. This status implies that the dispatch process is not
+            yet finished. If dispatch fails at a later time, a new dispatch is required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionDispatchState'
+        '400':
+          description: Bad Request. Request was invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden. Dispatch to the specified target is not allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict. Submission data could not be stored or sent to the target system
+            due to a conflict, for example when the submission was already stored and cannot be updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /submissions/{submissionKey}:
+    get:
+      summary: Get state of a previous store or send of submission data.
+      operationId: getSubmissionDispatchState
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionDispatchState'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    parameters:
+      - name: submissionKey
+        in: path
+        description: Submission key.
+        required: true
+        schema:
+          type: string
+
+components:
+  schemas:
+
+    SubmissionDispatch:
+      description: Document submission data to be dispatched to target system.
+      required: [targetId, targetPath, submission]
+      properties:
+        targetId:
+          description: Identifier of the target system to which the submitted documents should be stored. Target ID
+            can be empty.
+          example: hakemukset
+        targetPath:
+          description: Context path for the document in the target. The path should be given in URI path format,
+            using forward slash `/` as separator. For example, if the target is a file system location, `targetPath`
+            indicates a subdirectory. Target path can be empty.
+          example: /yhdyskuntapalvelut/venepaikkahakemus
+        test:
+          description: Specifies that this submission is a test. If the value is `true`, the receiving service
+            should verify that the dispatch process to the specified target works and then discard the submitted
+            document. If the value is missing or `false`, the document should be processed normally.
+          type: boolean
+        submission:
+          $ref: '#/components/schemas/Submission'
+
+    SubmissionDispatchState:
+      description: State of dispatch of document submission data.
+      required: [submissionKey, dispatchTime, dispatchStatus]
+      properties:
+        submissionKey:
+          description: Submission key.
+        dispatchTime:
+          format: date-time
+          description: Time stamp when dispatch of the submission started.
+        dispatchStatus:
+          description: Status of dispatch of document submission data.
+          enum: [Success, InProgress, Failure]
+
+    Error:
+      description: Error description.
+      required: [status, title]
+      properties:
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+          description: HTTP status code.
+        title:
+          description: Error title.
+        detail:
+          description: Error details.
+
+    Submission:
+      description: Submission metadata.
+      required: [submissionKey, submissionTime, organization, document, contents]
+      properties:
+        submissionKey:
+          description: Unique key that identifies the submission. This can be a UUID or some other unique key.
+          example: a37fea75-a2a8-4898-ab70-bf0e8b6f5c3b
+        submissionTime:
+          format: date-time
+          description: Time stamp when the document was submitted.
+          example: 2020-02-12T15:52:37+02:00
+        organization:
+          $ref: '#/components/schemas/Organization'
+        unit:
+          $ref: '#/components/schemas/Unit'
+        document:
+          $ref: '#/components/schemas/Document'
+        authentication:
+          $ref: '#/components/schemas/Authentication'
+        authorizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Authorization'
+        properties:
+          description: Additional properties, for example metadata extracted from the submitted content.
+          type: object
+          additionalProperties:
+            type: string
+        contents:
+          description: Submitted document or documents. The number of documents and their file names must match the `files` parts of the request.
+          type: array
+          items:
+            $ref: '#/components/schemas/SubmissionContent'
+
+    Organization:
+      description: Organization that owns the document.
+      required: [id]
+      properties:
+        id:
+          description: Organization's identifier.
+        name:
+          description: Organization's name.
+        oid:
+          description: Organization's ISO OID according to ISO/IEC 8824-1.
+
+    Unit:
+      description: Organizational unit that owns the document.
+      required: [id]
+      properties:
+        id:
+          description: Unit's identifier.
+        name:
+          description: Unit's name.
+        oid:
+          description: Unit's ISO OID according to ISO/IEC 8824-1.
+
+    Document:
+      description: Identification of the document that was submitted.
+      required: [id, version, language]
+      properties:
+        id:
+          description: Document's identifier.
+        version:
+          description: Document's version.
+        language:
+          description: Document's language as two-letter code according to ISO 639-1.
+        name:
+          description: Document's name (in document language).
+        oid:
+          description: Document's ISO OID according to ISO/IEC 8824-1.
+
+    Authentication:
+      description: Record of submitter's authentication.
+      required: [transactionId, transactionTime]
+      properties:
+        transactionId:
+          description: Transaction identifier.
+        transactionTime:
+          description: Transaction time.
+          format: date-time
+        properties:
+          description: Additional properties of the authentication.
+          type: object
+          additionalProperties:
+            type: string
+
+    Authorization:
+      description: Record of submitter's authorization.
+      required: [transactionId, transactionTime]
+      properties:
+        transactionId:
+          description: Transaction identifier.
+        transactionTime:
+          description: Transaction time.
+          format: date-time
+        properties:
+          description: Additional properties of the authorization.
+          type: object
+          additionalProperties:
+            type: string
+
+    SubmissionContent:
+      description: Reference of a submitted document.
+      required: [fileName, fileType]
+      properties:
+        fileName:
+          description: File name of the content.
+        fileType:
+          description: File type.
+          enum: [Document, DocumentData, Attachment]
+        mediaType:
+          description: Media type of the content.
+        attachmentId:
+          description: Identifier of the attachment. Only used for attachments.
+
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: API-Key

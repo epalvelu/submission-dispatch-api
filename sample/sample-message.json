@@ -1,0 +1,60 @@
+{
+  "targetId": "hakemukset",
+  "targetPath": "/yhdyskuntapalvelut/venepaikkahakemukset",
+  "test": true,
+  "submission": {
+    "submissionKey": "a37fea75-a2a8-4898-ab70-bf0e8b6f5c3b",
+    "submissionTime": "2020-04-14T11:05:12Z",
+    "organization": {
+      "id": "Loimusaari",
+      "name": "Loimusaaren kaupunki",
+      "oid": "1.2.246.10.8429083"
+    },
+    "unit": {
+      "id": "LoimusaariYhdPal",
+      "name": "Yhdyskuntapalvelut",
+      "oid": "1.2.246.10.8429083.17"
+    },
+    "document": {
+      "id": "2140002",
+      "version": "2",
+      "language": "fi",
+      "name": "Venepaikkahakemus",
+      "oid": "1.2.246.10.8429083.322.54"
+    },
+    "authentication": {
+      "transactionId": "aSX29dT89LDas23bcx9kj2423mMZ33",
+      "transactionTime": "2020-04-14T11:02:22Z",
+      "properties": {
+        "menetelmä": "suomi.fi"
+      }
+    },
+    "authorizations": [
+      {
+        "transactionId": "FD0el43lgdf8SJ98212iUxwfFFweRp",
+        "transactionTime": "2020-04-14T11:03:37Z",
+        "properties": {
+          "menetelmä": "suomi.fi",
+          "tyyppi": "YrityksenPuolesta"
+        }
+      }
+    ],
+    "properties": {
+      "hakija": "Louhisaaren Venekerho ry",
+      "kohde": "Kivikkoranta"
+    },
+    "contents": [
+      {
+        "fileName": "sample-document.pdf",
+        "fileType": "Document",
+        "mediaType": "application/pdf"
+      },
+      {
+        "fileName": "sample-attachment.png",
+        "fileType": "Attachment",
+        "mediaType": "image/png",
+        "attachmentId": "Kuva"
+      }
+    ]
+  }
+}
